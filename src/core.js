@@ -1,0 +1,8 @@
+import crypto from 'node:crypto';
+export const MAX_BODY=1024*1024;
+export function normalizeHeaders(headers={}){return Object.fromEntries(Object.entries(headers).map(([k,v])=>[k.toLowerCase(),Array.isArray(v)?v.join(', '):String(v??'')]))}
+export function parseBody(raw,contentType=''){const text=raw.toString('utf8'); if(contentType.includes('application/json')){try{return {kind:'json',value:JSON.parse(text),text}}catch{return {kind:'text',value:text,text}}} return {kind:'text',value:text,text}}
+export function signHmac(secret,payload,algorithm='sha256'){if(!secret) throw new Error('Secret is required'); return crypto.createHmac(algorithm,secret).update(payload).digest('hex')}
+export function safeTarget(input){const u=new URL(input); if(!['http:','https:'].includes(u.protocol)) throw new Error('Only HTTP(S) targets are allowed'); const h=u.hostname.toLowerCase(); if(['localhost','0.0.0.0','::1'].includes(h)||h.endsWith('.local')||/^127\./.test(h)||/^10\./.test(h)||/^192\.168\./.test(h)||/^169\.254\./.test(h)||/^172\.(1[6-9]|2\d|3[01])\./.test(h)) throw new Error('Private/local targets are blocked'); return u}
+export function toCurl(e){const hs=Object.entries(e.headers||{}).filter(([k])=>!['host','content-length'].includes(k)).map(([k,v])=>`-H ${JSON.stringify(`${k}: ${v}`)}`).join(' '); const body=e.bodyText?`--data-raw ${JSON.stringify(e.bodyText)}`:''; return `curl -X ${e.method} ${hs} ${body} ${JSON.stringify(e.path)}`.replace(/\s+/g,' ').trim()}
+export function eventSummary(e){return {id:e.id,method:e.method,path:e.path,createdAt:e.createdAt,contentType:e.headers?.['content-type']||'',size:Buffer.byteLength(e.bodyText||'')}}
